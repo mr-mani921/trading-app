@@ -11,6 +11,21 @@ const API = axios.create({
 
 console.log(import.meta.env.VITE_API_URL);
 
+// Helper to detect Safari browsers
+const isSafari = () => {
+  const ua = navigator.userAgent.toLowerCase();
+  return (
+    ua.indexOf("safari") !== -1 &&
+    ua.indexOf("chrome") === -1 &&
+    ua.indexOf("android") === -1
+  );
+};
+
+// Helper to detect iOS devices
+const isIOS = () => {
+  return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+};
+
 // Add request interceptor for auth token
 API.interceptors.request.use((config) => {
   const token = localStorage.getItem("token");
@@ -18,9 +33,19 @@ API.interceptors.request.use((config) => {
     config.headers.Authorization = `Bearer ${token}`;
   }
 
-  // Ensure compatibility with iOS/macOS Safari
-  if (config.url && config.url.includes("/user/getwallet")) {
-    config.timeout = 30000; // Extended timeout for wallet operations
+  // Special handling for Safari browsers
+  if (isSafari() || isIOS()) {
+    // Extended timeout for all requests in Safari
+    config.timeout = 60000;
+
+    // Set cache control headers to prevent caching issues in Safari
+    config.headers["Cache-Control"] = "no-cache, no-store, must-revalidate";
+    config.headers["Pragma"] = "no-cache";
+    config.headers["Expires"] = "0";
+
+    // Add timestamp to prevent caching issues with Safari
+    const separator = config.url.includes("?") ? "&" : "?";
+    config.url = `${config.url}${separator}_ts=${new Date().getTime()}`;
   }
 
   return config;
@@ -34,15 +59,28 @@ API.interceptors.response.use(
   (error) => {
     // Specific handling for Safari/iOS connection issues
     if (
-      error.message === "Network Error" ||
-      (error.response && error.response.status === 0)
+      (isSafari() || isIOS()) &&
+      (error.message === "Network Error" ||
+        error.message.includes("Failed to fetch") ||
+        error.message.includes("access control checks") ||
+        (error.response && error.response.status === 0))
     ) {
-      console.error("Connection error - possible Safari/iOS issue");
+      console.error(
+        "Safari connection error - attempting recovery",
+        error.message
+      );
+
       // Try to recover by retrying the request
       const originalRequest = error.config;
       if (!originalRequest._retry) {
         originalRequest._retry = true;
-        return API(originalRequest);
+
+        // Add a short delay before retrying to allow any locks to clear
+        return new Promise((resolve) => {
+          setTimeout(() => {
+            resolve(API(originalRequest));
+          }, 500);
+        });
       }
     }
     return Promise.reject(error);

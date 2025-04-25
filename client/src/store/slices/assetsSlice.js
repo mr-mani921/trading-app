@@ -40,20 +40,54 @@ export const getWallet = createAsyncThunk(
       // Detect if user is on iOS/macOS
       const userAgent = navigator.userAgent.toLowerCase();
       const isApple = /(mac|iphone|ipad|ipod)/i.test(userAgent);
+      const isSafari =
+        isApple &&
+        /safari/i.test(userAgent) &&
+        !/chrome|crios/i.test(userAgent);
+
+      // Add a random query parameter to prevent caching on Safari
+      const cacheBuster = `_t=${Date.now()}`;
+      const url = isSafari
+        ? `/user/getwallet?${cacheBuster}`
+        : "/user/getwallet";
 
       // Use a different configuration for Apple devices if needed
       const config = {
         headers: {
           "Content-Type": "application/json",
+          "Cache-Control": "no-cache, no-store, must-revalidate",
+          Pragma: "no-cache",
+          Expires: "0",
         },
-        timeout: isApple ? 30000 : 10000, // Longer timeout for Apple devices
+        timeout: isApple ? 60000 : 30000, // Longer timeout for Apple devices
       };
 
-      // Make the API request with the appropriate configuration
-      const response = await API.get("/user/getwallet", config);
+      // For Safari, use a retry mechanism with progressive backoff
+      let response = null;
+      let attempts = 0;
+      const maxAttempts = 3;
+
+      while (!response && attempts < maxAttempts) {
+        try {
+          attempts++;
+          response = await API.get(url, config);
+          break;
+        } catch (error) {
+          console.warn(
+            `Wallet fetch attempt ${attempts} failed: ${error.message}`
+          );
+
+          if (attempts >= maxAttempts) {
+            throw error;
+          }
+
+          // Wait longer between each retry
+          await new Promise((resolve) => setTimeout(resolve, 1000 * attempts));
+        }
+      }
 
       // Ensure we have valid data before returning
-      if (!response.data) {
+      if (!response?.data) {
         throw new Error("Invalid wallet data received");
       }
 
@@ -79,12 +113,16 @@ export const getWallet = createAsyncThunk(
       return safeWallet;
     } catch (error) {
       console.error("Wallet fetch error:", error);
-      toast.error(
-        error.response?.data?.message || "Failed to fetch wallet data"
-      );
-      return rejectWithValue(
-        error.response?.data || { message: "Network error occurred" }
-      );
+
+      // Create a user-friendly error message
+      const errorMessage =
+        error.response?.data?.message ||
+        "Failed to fetch wallet data" +
+          (error.message ? `: ${error.message}` : "");
+
+      toast.error(errorMessage);
+
+      return rejectWithValue(error.response?.data || { message: errorMessage });
     } finally {
       dispatch(setLoading(false)); // Stop loading after request
     }

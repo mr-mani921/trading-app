@@ -97,7 +97,6 @@ export const getProfile = async (req, res) => {
   try {
     const user = await User.findById(req.user._id).select("-password");
 
-    
     if (!user)
       return res
         .status(404)
@@ -142,6 +141,22 @@ export const updateProfile = async (req, res) => {
  */
 export const getWallet = async (req, res) => {
   try {
+    // Check if the request is from Safari
+    const userAgent = req.headers["user-agent"] || "";
+    const isSafari =
+      userAgent.includes("Safari") &&
+      !userAgent.includes("Chrome") &&
+      !userAgent.includes("Android");
+
+    // Set Safari-friendly headers
+    if (isSafari) {
+      res.set({
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        Pragma: "no-cache",
+        Expires: "0",
+      });
+    }
+
     const wallet = await Wallet.findOne({ userId: req.user._id })
       .populate("withdrawalHistory")
       .populate("depositHistory")
@@ -150,9 +165,30 @@ export const getWallet = async (req, res) => {
     if (!wallet) {
       return res.status(404).json({ message: "Wallet not found" });
     }
-    res.status(200).json(wallet);
+
+    // Create a well-formed response to ensure Safari compatibility
+    const walletData = {
+      ...wallet.toObject(),
+      spotWallet: wallet.spotWallet || 0,
+      exchangeWallet: wallet.exchangeWallet || 0,
+      futuresWallet: wallet.futuresWallet || 0,
+      perpetualsWallet: wallet.perpetualsWallet || 0,
+      holdings: Array.isArray(wallet.holdings) ? wallet.holdings : [],
+      exchangeHoldings: Array.isArray(wallet.exchangeHoldings)
+        ? wallet.exchangeHoldings
+        : [],
+      frozenAssets: Array.isArray(wallet.frozenAssets)
+        ? wallet.frozenAssets
+        : [],
+    };
+
+    res.status(200).json(walletData);
   } catch (error) {
-    res.status(500).json({ message: "Error fetching wallet data", error });
+    console.error("Error fetching wallet data:", error);
+    res.status(500).json({
+      message: "Error fetching wallet data",
+      error: error.message,
+    });
   }
 };
 

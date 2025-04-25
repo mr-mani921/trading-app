@@ -16,6 +16,7 @@ import perpetualTradeRouter from "./routers/perpetualRoutes.js";
 import walletRouter from "./routers/walletRoutes.js";
 import kycRouter from "./routers/kycRoutes.js";
 import newsRouter from "./routers/newsRoutes.js";
+import { safariCompatibilityMiddleware } from "./middlewares/safariCompatibility.js";
 
 const app = express();
 
@@ -26,18 +27,45 @@ const envPath = join(__dirname, "/config/config.env");
 
 config({ path: envPath });
 
+// Enhanced CORS configuration for Safari compatibility
 app.use(
   cors({
     origin: [process.env.FRONTEND_URL, "https://cryptonexus.live"],
     credentials: true,
-    methods: "GET,POST,PUT,DELETE",
-    allowedHeaders: "Content-Type,Authorization",
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+      "X-Requested-With",
+      "Accept",
+      "Origin",
+      "Cache-Control",
+      "Pragma",
+      "Expires",
+      "apikey",
+      "X-Client-Info",
+      "accept-profile",
+      "Device-Key",
+      "Api-Key",
+    ],
+    exposedHeaders: ["Date", "Content-Length", "ETag", "X-Auth", "Set-Cookie"],
+    optionsSuccessStatus: 200, // Use 200 instead of 204 for Safari compatibility
+    maxAge: 86400, // 24 hours
   })
 );
+
+// Handle OPTIONS requests explicitly for Safari
+app.options("*", (req, res) => {
+  res.status(200).send();
+});
+
 app.use(express.json());
 app.use(cookieParser());
 app.use(express.urlencoded({ extended: true }));
 app.use(fileUpload({ useTempFiles: true, tempFileDir: "/temp/" }));
+
+// Apply Safari compatibility middleware before routes
+app.use(safariCompatibilityMiddleware);
 
 app.use("/api/user", userRouter);
 app.use("/api/trade", tradeRouter);

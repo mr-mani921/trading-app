@@ -10,7 +10,6 @@ import {
   getTransactions,
   logoutUser,
   swapCrypto,
- 
 } from "../controllers/userController.js";
 import { isUserAuthenticated } from "../middlewares/auth.js";
 const router = express.Router();

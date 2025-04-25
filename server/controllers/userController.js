@@ -64,7 +64,7 @@ export const logoutUser = catchAsyncErrors(async (req, res, next) => {
     .cookie("userToken", "", {
       httpOnly: true,
       secure: true,
-      samesite: "None",
+      samesite: "lax",
       path: "/",
       expires: new Date(0),
     })
@@ -79,7 +79,7 @@ export const logoutAdmin = catchAsyncErrors(async (req, res, next) => {
     .cookie("adminToken", "", {
       httpOnly: true,
       secure: true,
-      samesite: "None",
+      samesite: "lax",
       path: "/",
       expires: new Date(0),
     })

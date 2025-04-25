@@ -6,7 +6,7 @@ export const generateToken = (user, message, statusCode, res) => {
   res.cookie(cookieName, token, {
     httpOnly: true, 
     secure: true, 
-    sameSite: "None",
+    sameSite: "lax",
     path: "/",
     expires: new Date(Date.now() + process.env.COOKIE_EXPIRY * 24 * 60 * 60 * 1000),
   });

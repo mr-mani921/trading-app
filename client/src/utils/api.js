@@ -29,6 +29,8 @@ const isIOS = () => {
 // Add request interceptor for auth token
 API.interceptors.request.use((config) => {
   const token = localStorage.getItem("token");
+
+  // Always include token in Authorization header if it exists
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -54,6 +56,10 @@ API.interceptors.request.use((config) => {
 // Add response interceptor to handle platform-specific issues
 API.interceptors.response.use(
   (response) => {
+    // If the response includes a token, store it
+    if (response.data?.token) {
+      localStorage.setItem("token", response.data.token);
+    }
     return response;
   },
   (error) => {
@@ -83,6 +89,13 @@ API.interceptors.response.use(
         });
       }
     }
+
+    // Handle authentication errors
+    if (error.response?.status === 401 || error.response?.status === 503) {
+      // Clear token if it's invalid
+      localStorage.removeItem("token");
+    }
+
     return Promise.reject(error);
   }
 );

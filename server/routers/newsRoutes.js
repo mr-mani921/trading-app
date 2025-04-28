@@ -18,7 +18,7 @@ router.get("/", getAllNews);
 // router.get("/:id", getSingleNews);
 
 // Admin routes
-router.get("/admin", isAdminAuthenticated, getAllNewsAdmin);
+router.get("/admin", getAllNewsAdmin);
 router.post("/", isAdminAuthenticated, createNews);
 router.put("/:id", isAdminAuthenticated, updateNews);
 router.delete("/:id", isAdminAuthenticated, deleteNews);

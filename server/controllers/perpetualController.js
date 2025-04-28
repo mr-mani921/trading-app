@@ -86,6 +86,12 @@ export const closePerpetualPosition = catchAsyncErrors(async (req, res) => {
   const { tradeId, closePrice } = req.body;
   const userId = req.user._id;
 
+  // Ensure closePrice is a valid number
+  const parsedClosePrice = parseFloat(closePrice);
+  if (isNaN(parsedClosePrice)) {
+    return res.status(400).json({ message: "Invalid close price provided" });
+  }
+
   const trade = await PerpetualTrade.findOne({ _id: tradeId, userId });
 
   if (!trade) return res.status(404).json({ message: "Trade not found" });
@@ -96,10 +102,15 @@ export const closePerpetualPosition = catchAsyncErrors(async (req, res) => {
 
   if (!wallet) return res.status(404).json({ message: "Wallet not found" });
 
-  let profitLoss =
-    trade.type === "long"
-      ? (closePrice - trade.entryPrice) * trade.quantity
-      : (trade.entryPrice - closePrice) * trade.quantity;
+  // Calculate profit/loss taking leverage into account
+  let profitLoss;
+  if (trade.type === "long") {
+    profitLoss =
+      (parsedClosePrice - trade.entryPrice) * trade.quantity * trade.leverage;
+  } else {
+    profitLoss =
+      (trade.entryPrice - parsedClosePrice) * trade.quantity * trade.leverage;
+  }
 
   // Make sure we're adding valid numbers to the wallet
   if (isNaN(profitLoss)) {
@@ -113,8 +124,8 @@ export const closePerpetualPosition = catchAsyncErrors(async (req, res) => {
     ? wallet.perpetualsWallet
     : updatedBalance;
 
-  if (wallet.balanceUSDT < 0) {
-    wallet.balanceUSDT = 0;
+  if (wallet.perpetualsWallet < 0) {
+    wallet.perpetualsWallet = 0;
   }
   await wallet.save();
 
@@ -122,7 +133,7 @@ export const closePerpetualPosition = catchAsyncErrors(async (req, res) => {
   trade.status = "closed";
   trade.closedAt = new Date();
   trade.profitLoss = profitLoss;
-  trade.closePrice = closePrice;
+  trade.closePrice = parsedClosePrice;
   await trade.save();
 
   res.status(200).json({
@@ -179,9 +190,6 @@ export const getPerpetualTradesHistory = async (req, res) => {
       userId,
       status: { $in: ["closed", "liquidated"] },
     });
-    console.log(
-      "got a history request and this is a futures complete object: " + trades
-    );
 
     res.status(200).json({ message: "Trades fetched successfully", trades });
   } catch (error) {

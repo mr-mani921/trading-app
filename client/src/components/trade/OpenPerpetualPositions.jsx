@@ -67,6 +67,7 @@ const OpenPerpetualPositions = ({ marketPrice, showBtn }) => {
       toast.error("Please select a trade to close!");
       return;
     }
+    console.log(marketPrice);
     dispatch(closePerpetualTrade({ tradeId, closePrice: marketPrice }));
     dispatch(fetchOpenPerpetualTrades());
   };
@@ -205,17 +206,6 @@ const OpenPerpetualPositions = ({ marketPrice, showBtn }) => {
                       {trade.liquidationPrice?.toFixed(2)}
                     </span>
                   </div>
-                  {showBtn && (
-                    <div className="w-full flex justify-center ">
-                      <button
-                        onClick={() => handleCloseTrade(trade._id)}
-                        className={`px-4 rounded-md bg-[#ff5e5a]`}
-                        disabled={loading}
-                      >
-                        {loading ? "Closing..." : "Close Trade"}
-                      </button>
-                    </div>
-                  )}
                 </div>
               </div>
             ))}

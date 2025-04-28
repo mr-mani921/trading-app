@@ -18,14 +18,9 @@ router.get("/", getAllNews);
 // router.get("/:id", getSingleNews);
 
 // Admin routes
-router.get(
-  "/admin",
-  isUserAuthenticated,
-  isAdminAuthenticated,
-  getAllNewsAdmin
-);
-router.post("/", isUserAuthenticated, isAdminAuthenticated, createNews);
-router.put("/:id", isUserAuthenticated, isAdminAuthenticated, updateNews);
-router.delete("/:id", isUserAuthenticated, isAdminAuthenticated, deleteNews);
+router.get("/admin", isAdminAuthenticated, getAllNewsAdmin);
+router.post("/", isAdminAuthenticated, createNews);
+router.put("/:id", isAdminAuthenticated, updateNews);
+router.delete("/:id", isAdminAuthenticated, deleteNews);
 
 export default router;

@@ -1,15 +1,21 @@
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { fetchOpenPositions } from "../../store/slices/futuresTradeSlice";
+import {
+  fetchOpenPositions,
+  closeFuturesTrade,
+} from "../../store/slices/futuresTradeSlice";
 import io from "socket.io-client";
+import { Button } from "@material-tailwind/react";
+import { toast } from "react-toastify";
+import PropTypes from "prop-types";
 
 const socket = io(import.meta.env.VITE_API_URL);
 
-function FuturesOpenPosition() {
+function FuturesOpenPosition({ showBtn = false }) {
   const [pnlData, setPnlData] = useState({});
   const [marketPrice, setMarketPrice] = useState(null);
   const [countdowns, setCountdowns] = useState({});
-  const { openPositions } = useSelector((state) => state.futures);
+  const { openPositions, status } = useSelector((state) => state.futures);
   const dispatch = useDispatch();
 
   useEffect(() => {
@@ -148,6 +154,22 @@ function FuturesOpenPosition() {
     }
   };
 
+  // Handle closing a trade
+  const handleCloseTrade = (tradeId) => {
+    if (!tradeId) {
+      toast.error("Please select a trade to close!");
+      return;
+    }
+
+    if (!marketPrice) {
+      toast.error("Market price not available. Try again.");
+      return;
+    }
+
+    dispatch(closeFuturesTrade({ tradeId, closePrice: marketPrice }));
+    dispatch(fetchOpenPositions());
+  };
+
   return (
     <div className="mt-6">
       <div className="hidden md:block bg-transparent mb-4">
@@ -162,6 +184,7 @@ function FuturesOpenPosition() {
                 <th className="py-2 hidden md:table-cell">Liquidation Price</th>
                 <th className="py-2">PNL (USDT)</th>
                 <th className="py-2">Time Remaining</th>
+                {showBtn && <th className="py-2">Action</th>}
               </tr>
             </thead>
             <tbody>
@@ -187,6 +210,17 @@ function FuturesOpenPosition() {
                   <td className="py-2 text-yellow-400">
                     {formatCountdown(countdowns[trade._id], trade)}
                   </td>
+                  {showBtn && (
+                    <td className="py-2">
+                      <Button
+                        onClick={() => handleCloseTrade(trade._id)}
+                        className="px-4 py-2 rounded-md bg-[#ff5e5a]"
+                        disabled={status === "loading"}
+                      >
+                        {status === "loading" ? "Closing..." : "Close Trade"}
+                      </Button>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
@@ -253,6 +287,18 @@ function FuturesOpenPosition() {
                       {formatCountdown(countdowns[trade._id], trade)}
                     </span>
                   </div>
+
+                  {showBtn && (
+                    <div className="w-full flex justify-center mt-3">
+                      <Button
+                        onClick={() => handleCloseTrade(trade._id)}
+                        className="px-4 py-2 rounded-md bg-[#ff5e5a]"
+                        disabled={status === "loading"}
+                      >
+                        {status === "loading" ? "Closing..." : "Close Trade"}
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
@@ -264,5 +310,9 @@ function FuturesOpenPosition() {
     </div>
   );
 }
+
+FuturesOpenPosition.propTypes = {
+  showBtn: PropTypes.bool,
+};
 
 export default FuturesOpenPosition;

@@ -136,6 +136,12 @@ export const closeFuturesPosition = catchAsyncErrors(async (req, res) => {
   const { tradeId, closePrice } = req.body;
   const userId = req.user._id;
 
+  // Ensure closePrice is a valid number
+  const parsedClosePrice = parseFloat(closePrice);
+  if (isNaN(parsedClosePrice)) {
+    return res.status(400).json({ message: "Invalid close price provided" });
+  }
+
   const trade = await FuturesTrade.findOne({ _id: tradeId, userId });
 
   if (!trade) {
@@ -152,24 +158,43 @@ export const closeFuturesPosition = catchAsyncErrors(async (req, res) => {
     return res.status(404).json({ message: "Wallet not found" });
   }
 
-  // Calculate profit/loss
+  // Calculate profit/loss taking leverage into account
   let profitLoss;
   if (trade.type === "long") {
-    profitLoss = (closePrice - trade.entryPrice) * trade.quantity;
+    profitLoss =
+      (parsedClosePrice - trade.entryPrice) * trade.quantity * trade.leverage;
   } else {
-    profitLoss = (trade.entryPrice - closePrice) * trade.quantity;
+    profitLoss =
+      (trade.entryPrice - parsedClosePrice) * trade.quantity * trade.leverage;
+  }
+
+  // Handle invalid calculation results
+  if (isNaN(profitLoss)) {
+    profitLoss = 0;
   }
 
   // Update wallet balance
-  wallet.futuresWallet += trade.marginUsed + profitLoss;
+  const updatedBalance = wallet.futuresWallet + trade.marginUsed + profitLoss;
+  wallet.futuresWallet = isNaN(updatedBalance)
+    ? wallet.futuresWallet
+    : updatedBalance;
+
+  // Make sure wallet doesn't go negative
+  if (wallet.futuresWallet < 0) {
+    wallet.futuresWallet = 0;
+  }
   await wallet.save();
 
   // Close the trade and store PNL information
   trade.status = "closed";
   trade.closedAt = new Date();
   trade.profitLoss = profitLoss;
-  trade.closePrice = closePrice;
+  trade.closePrice = parsedClosePrice;
+  console.log("the trade is going to save", trade);
   await trade.save();
+
+  // Emit event for real-time updates
+  io.emit("tradeClose", { tradeId, profitLoss });
 
   res.status(200).json({
     message: "Futures position closed successfully",
@@ -196,9 +221,6 @@ export const getFuturesTradeHistory = async (req, res) => {
       userId,
       status: { $in: ["closed", "liquidated"] },
     });
-    console.log(
-      "got a history request and this is a futures complete object: " + trades
-    );
 
     res.status(200).json({ message: "Trades fetched successfully", trades });
   } catch (error) {
@@ -222,27 +244,24 @@ export const checkLiquidations = async (marketPrices) => {
       (trade.type === "long" && marketPrice <= trade.liquidationPrice) ||
       (trade.type === "short" && marketPrice >= trade.liquidationPrice)
     ) {
-      // Calculate profit/loss for the liquidated trade (always negative)
-      const profitLoss = -trade.marginUsed; // Full loss of margin
+      // Calculate profit/loss for the liquidated trade
+      // For liquidation, consider it a full loss of the margin used
+      const profitLoss = -trade.marginUsed;
 
-      // Liquidate the trade
-      const wallet = await Wallet.findOne({ userId: trade.userId });
-      if (wallet) {
-        wallet.balanceUSDT -= trade.marginUsed;
-        await wallet.save();
-      }
-
+      // Update the trade record with liquidation information
       trade.status = "liquidated";
       trade.closedAt = new Date();
       trade.profitLoss = profitLoss;
       trade.closePrice = marketPrice;
       await trade.save();
+
+      // Notify clients about the liquidation
       io.emit("liquidationUpdate", trade);
     }
   }
 };
 
-// Check for expired trades and close them
+// Check for expired trades and mark them as expired without closing them
 export const checkExpiredTrades = async () => {
   try {
     const now = new Date();
@@ -255,48 +274,20 @@ export const checkExpiredTrades = async () => {
     });
 
     for (const trade of expiredTrades) {
-      // Get current market price for PNL calculation
-      try {
-        // Fetch current price from Binance API
-        const response = await axios.get(
-          `https://api.binance.com/api/v3/ticker/price?symbol=${trade.pair}`
-        );
-        const currentPrice = parseFloat(response.data.price);
+      // Just mark the trade as expired without closing it
+      // Admin will handle the actual closing process
+      trade.isExpired = true;
+      await trade.save();
 
-        // Calculate PNL
-        let profitLoss;
-        if (trade.type === "long") {
-          profitLoss = (currentPrice - trade.entryPrice) * trade.quantity;
-        } else {
-          profitLoss = (trade.entryPrice - currentPrice) * trade.quantity;
-        }
-
-        // Update wallet with PNL
-        const wallet = await Wallet.findOne({ userId: trade.userId });
-        if (wallet) {
-          wallet.futuresWallet += trade.marginUsed + profitLoss;
-          await wallet.save();
-        }
-
-        // Update the trade to mark it as closed with PNL data
-        trade.isExpired = true;
-        trade.status = "closed";
-        trade.closedAt = now;
-        trade.profitLoss = profitLoss;
-        trade.closePrice = currentPrice;
-        await trade.save();
-      } catch (error) {
-        console.error("Error fetching price for expired trade:", error);
-        // If we can't get the price, just mark as expired without PNL calculation
-        trade.isExpired = true;
-        await trade.save();
-      }
-
-      // Notify clients about expired trade status
+      // Notify clients about expired trade status for UI updates
       io.emit("tradeExpired", trade);
     }
 
-    console.log(`Checked and marked ${expiredTrades.length} trades as expired`);
+    if (expiredTrades.length > 0) {
+      console.log(
+        `Marked ${expiredTrades.length} trades as expired. These trades will remain open until closed by admin.`
+      );
+    }
   } catch (error) {
     console.error("Error checking expired trades:", error);
   }

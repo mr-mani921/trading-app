@@ -133,6 +133,7 @@ export const liquidateTrade = async (req, res) => {
   try {
     const { tradeId } = req.params;
     const { marketPrice, amount, type } = req.body; // Receive market price from frontend
+    console.log("the request is for liquidation");
 
     if (!marketPrice) {
       return res.status(400).json({ message: "Market price is required" });
@@ -163,38 +164,44 @@ export const liquidateTrade = async (req, res) => {
     if (!wallet) return res.status(404).json({ message: "Wallet not found" });
 
     // **Calculate Profit/Loss**
-
     let profitLoss;
-    profitLoss =
-      type === "profit" ? amount * trade.leverage : -amount * trade.leverage;
+    if (type === "profit") {
+      profitLoss = amount * trade.leverage;
+    } else {
+      profitLoss = -amount * trade.leverage;
+    }
 
     // **Update User Wallet Balance**
     if (category === "futures") {
-      wallet.futuresWallet += profitLoss;
-      if (wallet.futuresWallet < 0) {
-        wallet.futuresWallet = 0;
-      }
+      const updatedBalance =
+        wallet.futuresWallet + trade.marginUsed + profitLoss;
+      wallet.futuresWallet = Math.max(0, updatedBalance);
     } else if (category === "perpetual") {
-      wallet.perpetualsWallet += profitLoss;
-      if (wallet.perpetualsWallet < 0) {
-        wallet.perpetualsWallet = 0;
-      }
+      const updatedBalance =
+        wallet.perpetualsWallet + trade.marginUsed + profitLoss;
+      wallet.perpetualsWallet = Math.max(0, updatedBalance);
     }
     await wallet.save();
 
-    // **Update trade status to "liquidated"**
+    // **Update trade with status, closePrice, and PNL**
     trade.status = "closed";
+    trade.closedAt = new Date();
+    trade.profitLoss = profitLoss;
+    trade.closePrice = closePrice;
     await trade.save();
+
+    // Emit event for real-time updates
+    io.emit("tradeClose", { tradeId: trade._id, profitLoss });
 
     res.status(200).json({
       message: "Trade closed successfully",
       profitLoss,
+      closePrice,
     });
   } catch (error) {
     console.log(error.message);
-
     res
       .status(500)
-      .json({ message: "Error liquidating trade", error: error.message });
+      .json({ message: "Error closing trade", error: error.message });
   }
 };

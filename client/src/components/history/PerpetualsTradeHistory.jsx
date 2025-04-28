@@ -1,10 +1,11 @@
-import React, { useEffect } from "react";
+import { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchMarketData } from "../../store/slices/marketSlice"; // Adjust the import path
+import PropTypes from "prop-types";
 
 const PerpetualsTradeHistory = ({ trades }) => {
   const dispatch = useDispatch();
-  const { coins, status } = useSelector((state) => state.market);
+  const { coins } = useSelector((state) => state.market);
 
   useEffect(() => {
     dispatch(fetchMarketData());
@@ -18,16 +19,26 @@ const PerpetualsTradeHistory = ({ trades }) => {
   };
 
   const extractBase = (pair) => {
+    if (!pair) return "";
     if (pair.length <= 3) return pair;
     const base = pair.slice(0, 3);
     return `${base}`;
   };
 
   const formatPnL = (pnl) => {
-    if (!pnl && pnl !== 0) return "--";
+    // If pnl is undefined, null, or not a number
+    if (pnl === undefined || pnl === null || isNaN(parseFloat(pnl))) {
+      return "--";
+    }
 
-    const formattedValue = pnl.toFixed(2);
-    return `${pnl >= 0 ? "+" : ""}${formattedValue}`;
+    // Convert to number if it's a string
+    const numPnl = typeof pnl === "string" ? parseFloat(pnl) : pnl;
+
+    // Format with 2 decimal places
+    const formattedValue = numPnl.toFixed(2);
+
+    // Add a plus sign for positive values
+    return `${numPnl >= 0 ? "+" : ""}${formattedValue}`;
   };
 
   return (
@@ -61,8 +72,11 @@ const PerpetualsTradeHistory = ({ trades }) => {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-700">
-            {trades.map((trade, index) => (
-              <tr key={index} className="hover:bg-gray-800 transition-colors">
+            {trades.map((trade, idx) => (
+              <tr
+                key={trade._id || idx}
+                className="hover:bg-gray-800 transition-colors"
+              >
                 <td className="px-4 py-2 text-sm text-gray-200 flex items-center gap-3">
                   <img
                     src={getCoinImage(extractBase(trade.pair))}
@@ -119,9 +133,9 @@ const PerpetualsTradeHistory = ({ trades }) => {
 
       {/* Mobile Cards */}
       <div className="md:hidden space-y-4">
-        {trades.map((trade, index) => (
+        {trades.map((trade, idx) => (
           <div
-            key={trade._id}
+            key={trade._id || idx}
             className="border-b border-[#2f2f2f] p-4 shadow-md"
           >
             <div className="flex justify-between items-center">
@@ -195,6 +209,10 @@ const PerpetualsTradeHistory = ({ trades }) => {
       </div>
     </div>
   );
+};
+
+PerpetualsTradeHistory.propTypes = {
+  trades: PropTypes.array.isRequired,
 };
 
 export default PerpetualsTradeHistory;

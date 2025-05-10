@@ -30,7 +30,7 @@ const TradingChart = ({
   const fetchMarketData = async () => {
     try {
       const response = await fetch(
-        `https://api.binance.com/api/v3/klines?symbol=${selectedPair}&interval=${selectedInterval}`
+        `https://api.binance.us/api/v3/klines?symbol=${selectedPair}&interval=${selectedInterval}`
       );
       const data = await response.json();
 
@@ -121,7 +121,7 @@ const TradingChart = ({
     if (wsRef.current) wsRef.current.close(); // Close previous WebSocket connection
 
     const ws = new WebSocket(
-      `wss://stream.binance.com:9443/ws/${selectedPair.toLowerCase()}@kline_${selectedInterval}`
+      `wss://stream.binance.us:9443/ws/${selectedPair.toLowerCase()}@kline_${selectedInterval}`
     );
     wsRef.current = ws;
 

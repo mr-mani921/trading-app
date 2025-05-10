@@ -61,7 +61,7 @@ function FuturesTrade() {
     const fetchMarketData = async () => {
       try {
         const response = await fetch(
-          `https://api.binance.com/api/v3/klines?symbol=${selectedPair}&interval=${selectedInterval}`
+          `https://api.binance.us/api/v3/klines?symbol=${selectedPair}&interval=${selectedInterval}`
         );
         const data = await response.json();
 

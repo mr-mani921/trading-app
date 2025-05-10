@@ -76,7 +76,6 @@ const OpenPerpetualPositions = ({ marketPrice, showBtn }) => {
     <div>
       <div>
         <Card className=" bg-transparent text-white min-w-[100%] hidden md:flex">
-
           <table className="text-sm text-left text-gray-400">
             <thead className="text-xs text-gray-400 uppercase ">
               <tr>
@@ -156,7 +155,6 @@ const OpenPerpetualPositions = ({ marketPrice, showBtn }) => {
 
       {/* for mobile screens */}
       <div className="md:hidden">
-
         {openTrades.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {openTrades.map((trade) => (

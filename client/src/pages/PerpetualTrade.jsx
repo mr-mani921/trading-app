@@ -43,7 +43,7 @@ const PerpetualTrade = () => {
     const fetchMarketData = async () => {
       try {
         const response = await fetch(
-          `https://api.binance.com/api/v3/klines?symbol=${selectedPair}&interval=${selectedInterval}`
+          `https://api.binance.us/api/v3/klines?symbol=${selectedPair}&interval=${selectedInterval}`
         );
         const data = await response.json();
 
@@ -71,7 +71,7 @@ const PerpetualTrade = () => {
   // WebSocket for real-time updates
   useEffect(() => {
     const ws = new WebSocket(
-      `wss://stream.binance.com:9443/ws/${selectedPair.toLowerCase()}@kline_${selectedInterval}`
+      `wss://stream.binance.us:9443/ws/${selectedPair.toLowerCase()}@kline_${selectedInterval}`
     );
 
     ws.onmessage = (event) => {

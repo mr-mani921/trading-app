@@ -25,7 +25,7 @@ const OrderBook = ({ selectedPair }) => {
     }
 
     const ws = new WebSocket(
-      `wss://stream.binance.com:9443/ws/${selectedPair.toLowerCase()}@depth`
+      `wss://stream.binance.us:9443/ws/${selectedPair.toLowerCase()}@depth`
     );
     wsRef.current = ws;
 

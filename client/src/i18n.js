@@ -21,6 +21,23 @@ const resources = {
       light: "Light",
       dark: "Dark",
 
+      // Maintenance Popup
+      "Scheduled Maintenance Notice": "Scheduled Maintenance Notice",
+      "To ensure a faster, more reliable experience for all our users, our website will undergo essential maintenance from":
+        "To ensure a faster, more reliable experience for all our users, our website will undergo essential maintenance from",
+      May: "May",
+      at: "at",
+      to: "to",
+      "We're currently experiencing exceptionally high traffic volumes, which may result in temporary access limitations.":
+        "We're currently experiencing exceptionally high traffic volumes, which may result in temporary access limitations.",
+      "In some cases, you may need to use a":
+        "In some cases, you may need to use a",
+      "VPN (Virtual Private Network)": "VPN (Virtual Private Network)",
+      "to access the site during this period.":
+        "to access the site during this period.",
+      "We're working hard behind the scenes to improve performance and truly appreciate your patience and understanding.":
+        "We're working hard behind the scenes to improve performance and truly appreciate your patience and understanding.",
+
       // Profile page
       id: "ID",
       verification_status: "Verification Status",
@@ -142,6 +159,23 @@ const resources = {
       theme: "Tema",
       light: "Claro",
       dark: "Oscuro",
+
+      // Maintenance Popup
+      "Scheduled Maintenance Notice": "Aviso de Mantenimiento Programado",
+      "To ensure a faster, more reliable experience for all our users, our website will undergo essential maintenance from":
+        "Para garantizar una experiencia más rápida y confiable para todos nuestros usuarios, nuestro sitio web estará en mantenimiento esencial desde el",
+      May: "Mayo",
+      at: "a las",
+      to: "hasta el",
+      "We're currently experiencing exceptionally high traffic volumes, which may result in temporary access limitations.":
+        "Actualmente estamos experimentando volúmenes de tráfico excepcionalmente altos, lo que puede resultar en limitaciones temporales de acceso.",
+      "In some cases, you may need to use a":
+        "En algunos casos, es posible que necesite usar una",
+      "VPN (Virtual Private Network)": "VPN (Red Privada Virtual)",
+      "to access the site during this period.":
+        "para acceder al sitio durante este período.",
+      "We're working hard behind the scenes to improve performance and truly appreciate your patience and understanding.":
+        "Estamos trabajando arduamente para mejorar el rendimiento y agradecemos sinceramente su paciencia y comprensión.",
 
       // Profile page
       id: "ID",
